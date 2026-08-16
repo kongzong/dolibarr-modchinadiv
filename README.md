@@ -31,3 +31,7 @@ php tests/run_all.php
 ## V0.2 规划
 
 表单级联选择器（Hook 注入第三方/联系人表单）、街道第四级、地址规范化工具。见 `docs/spec-chinadiv-v0.1.md`。
+
+## 开发约定
+
+本模块遵循 [custom/DOLIBARR-MODULE-DEVELOPMENT.md](../DOLIBARR-MODULE-DEVELOPMENT.md) 中的最佳实践与 AI 协作红线。

@@ -75,7 +75,9 @@ header('Cache-Control: no-cache, must-revalidate');
 	}
 
 	function socIdFromUrl() {
-		// Thirdparty card uses socid=, other object cards use id=
+		// Stored codes exist for thirdparties only; contact cards also use id=
+		// (contact id), so prefill must be limited to thirdparty pages.
+		if (window.location.pathname.indexOf('/societe/') === -1) { return ''; }
 		var m = window.location.search.match(/[?&]socid=(\d+)/) || window.location.search.match(/[?&]id=(\d+)/);
 		return m ? m[1] : '';
 	}

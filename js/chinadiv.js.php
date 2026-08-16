@@ -75,7 +75,8 @@ header('Cache-Control: no-cache, must-revalidate');
 	}
 
 	function socIdFromUrl() {
-		var m = window.location.search.match(/[?&]id=(\d+)/);
+		// Thirdparty card uses socid=, other object cards use id=
+		var m = window.location.search.match(/[?&]socid=(\d+)/) || window.location.search.match(/[?&]id=(\d+)/);
 		return m ? m[1] : '';
 	}
 

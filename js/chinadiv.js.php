@@ -27,6 +27,8 @@
  */
 
 header('Content-Type: application/javascript; charset=utf-8');
+// Module JS evolves between versions: never let browsers pin a stale copy
+header('Cache-Control: no-cache, must-revalidate');
 ?>
 // ChinaDiv cascade selector (IIFE, no globals)
 (function () {

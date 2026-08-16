@@ -1,0 +1,11 @@
+# modChinaDiv 语言文件 - zh_CN
+ModuleChinaDivName=中国行政区划
+ChinaDivSetup=行政区划数据
+ChinaDivProvinces=省级（省/自治区/直辖市/特别行政区）
+ChinaDivCities=市级
+ChinaDivDistricts=区县级
+ChinaDivImportTitle=导入/刷新区划数据
+ChinaDivImportOk=导入完成：处理 %s 条，失败 %s 条
+ChinaDivImportFailed=导入失败
+ChinaDivRead=查看行政区划数据
+ChinaDivAdmin=管理行政区划（导入）

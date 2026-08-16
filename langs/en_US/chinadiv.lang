@@ -1,0 +1,11 @@
+# modChinaDiv language file - en_US
+ModuleChinaDivName=China Divisions
+ChinaDivSetup=Administrative divisions data
+ChinaDivProvinces=Provinces
+ChinaDivCities=Cities
+ChinaDivDistricts=Districts
+ChinaDivImportTitle=Import/refresh division data
+ChinaDivImportOk=Import done: %s processed, %s failed
+ChinaDivImportFailed=Import failed
+ChinaDivRead=Read China divisions data
+ChinaDivAdmin=Administer China divisions (import)

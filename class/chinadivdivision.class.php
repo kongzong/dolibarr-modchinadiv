@@ -194,6 +194,61 @@ class ChinaDivDivision
 	}
 
 	/**
+	 * Save the division codes of a thirdparty (upsert, one row per thirdparty).
+	 *
+	 * @param	int		$fkSoc			Thirdparty id
+	 * @param	string	$provinceCode	6-digit code or '' to clear
+	 * @param	string	$cityCode		6-digit code or ''
+	 * @param	string	$districtCode	6-digit code or ''
+	 * @return	int							1 ok, <0 error
+	 */
+	public function upsertSocCodes($fkSoc, $provinceCode, $cityCode, $districtCode)
+	{
+		if ((int) $fkSoc <= 0) {
+			return -1;
+		}
+		$valid = function ($c) { return preg_match('/^[0-9]{6}$/', (string) $c) ? $c : ''; };
+		$p = $valid($provinceCode);
+		$c = $valid($cityCode);
+		$d = $valid($districtCode);
+		if ($p === '' && $c === '' && $d === '') {
+			// Nothing selected: remove any existing row
+			$sql = "DELETE FROM ".$this->db->prefix()."chinadiv_soc_division WHERE fk_soc = ".((int) $fkSoc);
+			return $this->db->query($sql) ? 1 : -1;
+		}
+		$sql = "INSERT INTO ".$this->db->prefix()."chinadiv_soc_division (fk_soc, province_code, city_code, district_code)";
+		$sql .= " VALUES (".((int) $fkSoc).", ".($p !== '' ? "'".$p."'" : 'NULL').", ".($c !== '' ? "'".$c."'" : 'NULL').", ".($d !== '' ? "'".$d."'" : 'NULL').")";
+		$sql .= " ON DUPLICATE KEY UPDATE province_code = VALUES(province_code), city_code = VALUES(city_code), district_code = VALUES(district_code)";
+		$resql = $this->db->query($sql);
+		return $resql ? 1 : -1;
+	}
+
+	/**
+	 * Get the division codes stored for a thirdparty.
+	 *
+	 * @param	int		$fkSoc	Thirdparty id
+	 * @return	array{province_code:string,city_code:string,district_code:string}|null	null when no row
+	 */
+	public function getSocCodes($fkSoc)
+	{
+		$sql = "SELECT province_code, city_code, district_code FROM ".$this->db->prefix()."chinadiv_soc_division";
+		$sql .= " WHERE fk_soc = ".((int) $fkSoc);
+		$resql = $this->db->query($sql);
+		if (!$resql) {
+			return null;
+		}
+		$obj = $this->db->fetch_object($resql);
+		if (!$obj) {
+			return null;
+		}
+		return array(
+			'province_code' => (string) $obj->province_code,
+			'city_code' => (string) $obj->city_code,
+			'district_code' => (string) $obj->district_code,
+		);
+	}
+
+	/**
 	 * Import the standard pca-code.json dataset (modood/Administrative-divisions-of-China).
 	 *
 	 * @param	string	$json	Raw JSON content

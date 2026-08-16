@@ -89,6 +89,28 @@ class ChinaDivTest extends TestCase
 	}
 
 	/**
+	 * V0.3 structured storage: table, DAO methods, trigger, JS hidden fields.
+	 */
+	public function testSocDivisionStorage()
+	{
+		$this->assertStringContainsString('uk_chinadiv_soc', file_get_contents(__DIR__.'/../../sql/llx_chinadiv_soc_division.sql'));
+		foreach (array('upsertSocCodes', 'getSocCodes') as $method) {
+			$this->assertTrue(method_exists('ChinaDivDivision', $method), 'ChinaDivDivision::'.$method.' must exist');
+		}
+		$trigger = file_get_contents(__DIR__.'/../../core/triggers/interface_99_modChinaDiv_ChinaDivTriggers.class.php');
+		$this->assertStringContainsString('COMPANY_CREATE', $trigger);
+		$this->assertStringContainsString('COMPANY_MODIFY', $trigger);
+		$this->assertStringContainsString('return 0;', $trigger, 'trigger must never block business flow');
+		$desc = file_get_contents(__DIR__.'/../../core/modules/modChinaDiv.class.php');
+		$this->assertStringContainsString("'triggers' => 1", $desc);
+		$js = file_get_contents(__DIR__.'/../../js/chinadiv.js.php');
+		$this->assertStringContainsString('chinadiv_province_code', $js, 'JS must post machine-readable codes');
+		$this->assertStringContainsString('prefillStored', $js, 'edit form must prefill stored codes');
+		$api = file_get_contents(__DIR__.'/../../class/api_chinadiv.class.php');
+		$this->assertStringContainsString('divisions/soc/{socid}', $api);
+	}
+
+	/**
 	 * V0.2 cascade: JS declared in module_parts, AJAX endpoint checks permission,
 	 * JS derives base URL without server env.
 	 */

@@ -44,7 +44,67 @@ header('Content-Type: application/javascript; charset=utf-8');
 	}
 
 	var ajaxUrl = baseUrl() + 'custom/chinadiv/ajax/divisions.php';
+	var socUrl = baseUrl() + 'custom/chinadiv/ajax/soc_division.php';
 	var hint = <?php echo json_encode('中国行政区划快捷选择：选定后自动填充省份与城市字段 / Quick select: fills province and city fields'); ?>;
+
+	// Hidden inputs carrying the machine-readable codes; saved by the module trigger
+	function ensureHidden(form) {
+		['province', 'city', 'district'].forEach(function (k) {
+			var name = 'chinadiv_' + k + '_code';
+			if (!form.querySelector('input[name="' + name + '"]')) {
+				var h = document.createElement('input');
+				h.type = 'hidden';
+				h.name = name;
+				h.value = '';
+				form.appendChild(h);
+			}
+		});
+	}
+
+	function setHidden(form, p, c, d) {
+		ensureHidden(form);
+		var set = function (name, v) {
+			var el = form.querySelector('input[name="' + name + '"]');
+			if (el) { el.value = v || ''; }
+		};
+		set('chinadiv_province_code', p);
+		set('chinadiv_city_code', c);
+		set('chinadiv_district_code', d);
+	}
+
+	function socIdFromUrl() {
+		var m = window.location.search.match(/[?&]id=(\d+)/);
+		return m ? m[1] : '';
+	}
+
+	function prefillStored(form) {
+		var socId = socIdFromUrl();
+		if (!socId) { return; }
+		fetch(socUrl + '?fk_soc=' + encodeURIComponent(socId), {credentials: 'same-origin'})
+			.then(function (r) { return r.ok ? r.json() : null; })
+			.then(function (codes) {
+				if (!codes || !codes.province_code) { return; }
+				var selects = form.querySelectorAll('.chinadiv-cascade select');
+				var selP = selects[0], selC = selects[1], selD = selects[2];
+				if (!selP) { return; }
+				fetchDivisions('').then(function (items) {
+					fillSelect(selP, items, '— 省/直辖市 —');
+					selP.value = codes.province_code;
+					if (!codes.city_code) { return; }
+					return fetchDivisions(codes.province_code).then(function (items2) {
+						fillSelect(selC, items2, '— 市 —');
+						selC.value = codes.city_code;
+						if (!codes.district_code) { return; }
+						return fetchDivisions(codes.city_code).then(function (items3) {
+							fillSelect(selD, items3, '— 区/县 —');
+							selD.value = codes.district_code;
+						});
+					});
+				}).catch(function () {});
+				setHidden(form, codes.province_code, codes.city_code, codes.district_code);
+			})
+			.catch(function () {});
+	}
 
 	function findTargetForm() {
 		var forms = document.querySelectorAll('form');
@@ -123,6 +183,7 @@ header('Content-Type: application/javascript; charset=utf-8');
 		selProv.addEventListener('change', function () {
 			fillSelect(selCity, [], '— 市 —');
 			fillSelect(selDist, [], '— 区/县 —');
+			setHidden(form, selProv.value, '', '');
 			if (!selProv.value) { return; }
 			var provName = selProv.options[selProv.selectedIndex].text;
 			setStateByProvinceName(form, provName);
@@ -134,6 +195,7 @@ header('Content-Type: application/javascript; charset=utf-8');
 
 		selCity.addEventListener('change', function () {
 			fillSelect(selDist, [], '— 区/县 —');
+			setHidden(form, selProv.value, selCity.value, '');
 			if (!selCity.value) { return; }
 			applyTown(form, selCity.options[selCity.selectedIndex].text, '');
 			fetchDivisions(selCity.value).then(function (items) {
@@ -143,6 +205,7 @@ header('Content-Type: application/javascript; charset=utf-8');
 
 		selDist.addEventListener('change', function () {
 			if (!selDist.value) { return; }
+			setHidden(form, selProv.value, selCity.value, selDist.value);
 			applyTown(
 				form,
 				selCity.value ? selCity.options[selCity.selectedIndex].text : '',
@@ -164,6 +227,9 @@ header('Content-Type: application/javascript; charset=utf-8');
 		fetchDivisions('').then(function (items) {
 			fillSelect(selProv, items, '— 省/直辖市 —');
 		}).catch(function () {});
+
+		// Edit form: restore previously stored codes
+		prefillStored(form);
 	}
 
 	if (document.readyState === 'loading') {

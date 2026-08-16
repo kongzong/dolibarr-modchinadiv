@@ -74,4 +74,27 @@ class Chinadiv extends DolibarrApi
 		}
 		return $dao->getChildren('');
 	}
+
+	/**
+	 * Get the division codes stored for a thirdparty (machine-readable).
+	 *
+	 * @url	GET divisions/soc/{socid}
+	 *
+	 * @param	int		$socid	Thirdparty id
+	 * @return	array<string,string>|null
+	 * @throws RestException 403 Not allowed
+	 * @throws RestException 404 Not found
+	 */
+	public function getSocDivision($socid)
+	{
+		if (!DolibarrApiAccess::$user->hasRight('chinadiv', 'read') || !DolibarrApiAccess::$user->hasRight('societe', 'lire')) {
+			throw new RestException(403);
+		}
+		$dao = new ChinaDivDivision($this->db);
+		$codes = $dao->getSocCodes((int) $socid);
+		if (is_null($codes)) {
+			throw new RestException(404, 'No division codes stored for thirdparty '.$socid);
+		}
+		return $codes;
+	}
 }

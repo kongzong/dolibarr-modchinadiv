@@ -51,6 +51,19 @@ function chinadiv_find_by_name($name, $level = 0)
 }
 
 /**
+ * Get the division codes stored for a thirdparty (machine-readable, V0.3).
+ *
+ * @param	int		$fkSoc	Thirdparty id
+ * @return	array{province_code:string,city_code:string,district_code:string}|null
+ */
+function chinadiv_get_soc_codes($fkSoc)
+{
+	global $db;
+	$dao = new ChinaDivDivision($db);
+	return $dao->getSocCodes((int) $fkSoc);
+}
+
+/**
  * Build a Chinese-style single line address: 省 市 区 详细地址.
  * "市辖区" level-2 entries are dropped for a natural result.
  *

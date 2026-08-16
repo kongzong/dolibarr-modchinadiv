@@ -75,7 +75,10 @@ class modChinaDiv extends DolibarrModules
 			'printing' => 0,
 			'theme' => 0,
 			'css' => array(),
-			'js' => array(),
+			// Cascade selector on thirdparty address forms (V0.2)
+			'js' => array(
+				'/chinadiv/js/chinadiv.js.php',
+			),
 			'hooks' => array(),
 			'moduleforexternal' => 0,
 			'websitetemplates' => 0,

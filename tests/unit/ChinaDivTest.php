@@ -87,4 +87,19 @@ class ChinaDivTest extends TestCase
 		$content = file_get_contents(__DIR__.'/../../class/api_chinadiv.class.php');
 		$this->assertStringContainsString("hasRight('chinadiv', 'read')", $content);
 	}
+
+	/**
+	 * V0.2 cascade: JS declared in module_parts, AJAX endpoint checks permission,
+	 * JS derives base URL without server env.
+	 */
+	public function testCascadeSelector()
+	{
+		$desc = file_get_contents(__DIR__.'/../../core/modules/modChinaDiv.class.php');
+		$this->assertStringContainsString("'/chinadiv/js/chinadiv.js.php'", $desc);
+		$ajax = file_get_contents(__DIR__.'/../../ajax/divisions.php');
+		$this->assertStringContainsString("hasRight('chinadiv', 'read')", $ajax, 'AJAX endpoint must check permission');
+		$js = file_get_contents(__DIR__.'/../../js/chinadiv.js.php');
+		$this->assertStringContainsString('document.currentScript', $js, 'JS must derive base URL from its own script tag');
+		$this->assertStringContainsString('chinadiv-cascade', $js);
+	}
 }

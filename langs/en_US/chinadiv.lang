@@ -9,3 +9,4 @@ ChinaDivImportOk=Import done: %s processed, %s failed
 ChinaDivImportFailed=Import failed
 ChinaDivRead=Read China divisions data
 ChinaDivAdmin=Administer China divisions (import)
+ChinaDivCascadeHint=China divisions quick select: fills province and city fields

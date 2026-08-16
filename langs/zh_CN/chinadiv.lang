@@ -9,3 +9,4 @@ ChinaDivImportOk=导入完成：处理 %s 条，失败 %s 条
 ChinaDivImportFailed=导入失败
 ChinaDivRead=查看行政区划数据
 ChinaDivAdmin=管理行政区划（导入）
+ChinaDivCascadeHint=中国行政区划快捷选择：选定后自动填充省份与城市字段

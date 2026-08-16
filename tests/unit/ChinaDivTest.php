@@ -55,7 +55,7 @@ class ChinaDivTest extends TestCase
 		$this->assertStringContainsString("(440100, 2, 440000, '广州市')", $content);
 		$this->assertStringContainsString('(810000, 1, NULL, \'香港特别行政区\')', $content);
 		$rowCount = substr_count($content, "\n(") + substr_count($content, ',(');
-		$this->assertGreaterThan(3400, $rowCount, 'full dataset expected (3400+ rows)');
+		$this->assertGreaterThan(3300, $rowCount, 'full dataset expected (3300+ rows, 直筒子市 towns excluded)');
 	}
 
 	/**

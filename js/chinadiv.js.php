@@ -126,6 +126,8 @@ header('Content-Type: application/javascript; charset=utf-8');
 	}
 
 	function fillSelect(sel, items, placeholder) {
+		// Keep the current selection across refills (init fill and prefill run concurrently)
+		var keep = sel.value;
 		sel.innerHTML = '';
 		var opt = document.createElement('option');
 		opt.value = '';
@@ -137,6 +139,9 @@ header('Content-Type: application/javascript; charset=utf-8');
 			o.textContent = it.name;
 			sel.appendChild(o);
 		});
+		if (keep && sel.querySelector('option[value="' + keep + '"]')) {
+			sel.value = keep;
+		}
 	}
 
 	function setStateByProvinceName(form, provinceName) {

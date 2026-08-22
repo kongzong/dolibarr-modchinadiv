@@ -53,7 +53,8 @@ php tests/run_all.php        # 结构测试（无 PHPUnit 环境可跑）
 ## 开发约定
 
 本模块遵循 [custom/DOLIBARR-MODULE-DEVELOPMENT.md](../DOLIBARR-MODULE-DEVELOPMENT.md)
-中的最佳实践与 AI 协作红线。规格与 ADR 见 `docs/`。
+中的最佳实践与 AI 协作红线；本机环境、模块状态与交接信息见
+[custom/AGENTS.md](../AGENTS.md)。规格与 ADR 见 `docs/`。
 
 ## 后续方向
 

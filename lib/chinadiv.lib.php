@@ -64,6 +64,20 @@ function chinadiv_get_soc_codes($fkSoc)
 }
 
 /**
+ * Parse a free-text Chinese address into division codes + remainder (V0.4).
+ * Pure lookup, never writes. null when no province name prefixes the text.
+ *
+ * @param	string	$text	Address text, e.g. '广东省深圳市南山区科技园南路15号'
+ * @return	array{province_code:string,city_code:string,district_code:string,detail:string}|null
+ */
+function chinadiv_parse_address($text)
+{
+	global $db;
+	$dao = new ChinaDivDivision($db);
+	return $dao->parseAddress($text);
+}
+
+/**
  * Build a Chinese-style single line address: 省 市 区 详细地址.
  * "市辖区" level-2 entries are dropped for a natural result.
  *

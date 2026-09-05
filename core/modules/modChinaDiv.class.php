@@ -58,7 +58,7 @@ class modChinaDiv extends DolibarrModules
 		$this->editor_name = 'modChinaDiv';
 		$this->editor_url = 'https://example.com';
 
-		$this->version = '0.3.0';
+		$this->version = '0.4.0';
 
 		$this->const_name = 'MAIN_MODULE_'.strtoupper($this->name);
 

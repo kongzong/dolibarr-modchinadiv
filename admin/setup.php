@@ -58,6 +58,8 @@ llxHeader('', $langs->trans("ChinaDivSetup"));
 
 print load_fiche_titre($langs->trans("ChinaDivSetup"), '', 'chinadiv@chinadiv');
 
+$dao = new ChinaDivDivision($db);
+
 // Import action
 if ($action == 'import' && $user->hasRight('chinadiv', 'admin')) {
 	if (!empty($_FILES['pcafile']['tmp_name']) && is_uploaded_file($_FILES['pcafile']['tmp_name'])) {
@@ -75,8 +77,29 @@ if ($action == 'import' && $user->hasRight('chinadiv', 'admin')) {
 	$action = '';
 }
 
+// Address normalization (V0.4): store codes parsed from backlog addresses
+if ($action == 'normalize_apply' && $user->hasRight('chinadiv', 'admin')) {
+	$pending = $dao->getSocsMissingCodes(500);
+	$applied = 0;
+	$unparsed = 0;
+	foreach ($pending as $soc) {
+		$parsed = $dao->parseAddress($soc['address']);
+		if ($parsed !== null) {
+			$rc = $dao->upsertSocCodes($soc['id'], $parsed['province_code'], $parsed['city_code'], $parsed['district_code']);
+			if ($rc > 0) {
+				$applied++;
+			} else {
+				$unparsed++;
+			}
+		} else {
+			$unparsed++;
+		}
+	}
+	setEventMessages($langs->trans("ChinaDivNormalizeOk", $applied, $unparsed), null, 'mesgs');
+	$action = '';
+}
+
 // Stats
-$dao = new ChinaDivDivision($db);
 $counts = $dao->countByLevel();
 
 print '<table class="border centpercent">';
@@ -97,6 +120,43 @@ if ($user->hasRight('chinadiv', 'admin')) {
 	print '<tr><td></td><td><input class="button" type="submit" value="'.$langs->trans("Import").'"></td></tr>';
 	print '</table>';
 	print '<br><span class="opacitymedium">'.$langs->trans("ChinaDivImportHelp").'</span>';
+	print '</form>';
+
+	// Backlog address normalization (preview + apply)
+	print '<br>';
+	print '<form method="POST" action="'.$_SERVER["PHP_SELF"].'">';
+	print '<input type="hidden" name="token" value="'.newToken().'">';
+	print '<input type="hidden" name="action" value="normalize_apply">';
+	print '<table class="border centpercent">';
+	print '<tr class="liste_titre"><td colspan="3">'.$langs->trans("ChinaDivNormalizeTitle").'</td></tr>';
+	$pending = $dao->getSocsMissingCodes(500);
+	if (empty($pending)) {
+		print '<tr><td colspan="3"><span class="opacitymedium">'.$langs->trans("ChinaDivNormalizeNone").'</span></td></tr>';
+	} else {
+		print '<tr><td colspan="3"><span class="opacitymedium">'.$langs->trans("ChinaDivNormalizeBacklog", count($pending)).'</span></td></tr>';
+		print '<tr class="liste_titre"><td>'.$langs->trans("ThirdParty").'</td><td>'.$langs->trans("Address").'</td><td>'.$langs->trans("ChinaDivNormalizeRegionCol").'</td></tr>';
+		$shown = 0;
+		foreach ($pending as $soc) {
+			if ($shown >= 50) { break; }
+			$shown++;
+			$parsed = $dao->parseAddress($soc['address']);
+			if ($parsed !== null) {
+				$provName = $cityName = $distName = '';
+				if ($dao->fetchByCode($parsed['province_code']) > 0) { $provName = $dao->name; }
+				if ($parsed['city_code'] !== '' && $dao->fetchByCode($parsed['city_code']) > 0) { $cityName = $dao->name; }
+				if ($parsed['district_code'] !== '' && $dao->fetchByCode($parsed['district_code']) > 0) { $distName = $dao->name; }
+				$parsedText = dol_escape_htmltag($provName.' / '.$cityName.' / '.$distName);
+			} else {
+				$parsedText = '<span class="error">'.$langs->trans("ChinaDivNormalizeUnparsed").'</span>';
+			}
+			print '<tr><td>'.dol_escape_htmltag($soc['name']).'</td><td>'.dol_escape_htmltag($soc['address']).'</td><td>'.$parsedText.'</td></tr>';
+		}
+		print '<tr><td colspan="3"><input class="button" type="submit" value="'.$langs->trans("ChinaDivNormalizeApply").'"';
+		print ' onclick="return confirm(\''.dol_escape_js($langs->trans("ChinaDivNormalizeApply")).'?\');">';
+		print '</td></tr>';
+	}
+	print '</table>';
+	print '<br><span class="opacitymedium">'.$langs->trans("ChinaDivNormalizeHelp").'</span>';
 	print '</form>';
 }
 

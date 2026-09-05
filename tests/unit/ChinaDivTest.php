@@ -124,4 +124,44 @@ class ChinaDivTest extends TestCase
 		$this->assertStringContainsString('document.currentScript', $js, 'JS must derive base URL from its own script tag');
 		$this->assertStringContainsString('chinadiv-cascade', $js);
 	}
+
+	/**
+	 * V0.4 contact code storage: table, DAO methods, trigger events,
+	 * AJAX + REST endpoints, JS prefill wiring.
+	 */
+	public function testContactDivisionStorage()
+	{
+		$sql = file_get_contents(__DIR__.'/../../sql/llx_chinadiv_contact_division.sql');
+		$this->assertStringContainsString('uk_chinadiv_contact', $sql, 'unique index for idempotency');
+		foreach (array('upsertContactCodes', 'getContactCodes', 'getAllDistrictsOfProvince', 'parseAddress', 'getSocsMissingCodes') as $method) {
+			$this->assertTrue(method_exists('ChinaDivDivision', $method), 'ChinaDivDivision::'.$method.' must exist');
+		}
+		$trigger = file_get_contents(__DIR__.'/../../core/triggers/interface_99_modChinaDiv_ChinaDivTriggers.class.php');
+		$this->assertStringContainsString('CONTACT_CREATE', $trigger);
+		$this->assertStringContainsString('CONTACT_MODIFY', $trigger);
+		$this->assertStringContainsString('upsertContactCodes', $trigger);
+		$ajax = file_get_contents(__DIR__.'/../../ajax/contact_division.php');
+		$this->assertStringContainsString("hasRight('societe', 'contact', 'lire')", $ajax, 'AJAX endpoint must check contact read permission');
+		$api = file_get_contents(__DIR__.'/../../class/api_chinadiv.class.php');
+		$this->assertStringContainsString('divisions/contact/{contactid}', $api);
+		$js = file_get_contents(__DIR__.'/../../js/chinadiv.js.php');
+		$this->assertStringContainsString('contact_division.php', $js, 'JS must fetch contact codes for contact pages');
+	}
+
+	/**
+	 * V0.4 address normalization: lib entry point, admin tool restricted to
+	 * chinadiv admin, parseAddress validates input before touching the DB.
+	 */
+	public function testAddressNormalization()
+	{
+		$lib = file_get_contents(__DIR__.'/../../lib/chinadiv.lib.php');
+		$this->assertStringContainsString('function chinadiv_parse_address', $lib);
+		$setup = file_get_contents(__DIR__.'/../../admin/setup.php');
+		$this->assertStringContainsString('normalize_apply', $setup);
+		$this->assertStringContainsString("hasRight('chinadiv', 'admin')", $setup, 'normalize apply must require chinadiv admin');
+		$this->assertStringContainsString('newToken()', $setup, 'normalize apply must be CSRF-protected');
+		$dao = new ChinaDivDivision(null);
+		$this->assertSame(null, $dao->parseAddress(''));
+		$this->assertSame(null, $dao->parseAddress('abc'), 'too-short input must be rejected before any SQL');
+	}
 }

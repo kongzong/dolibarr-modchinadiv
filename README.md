@@ -4,7 +4,7 @@ Dolibarr 22.0.x 外部模块：中国行政区划标准数据（国家统计局 
 第三方公司区划结构化存储、表单级联选择器与工具库，零 core 修改。
 作为物流、短信、电商订单等中国生态模块的公共依赖。
 
-当前版本：**0.3.0**
+当前版本：**0.4.0**
 
 ## 功能
 
@@ -18,10 +18,19 @@ Dolibarr 22.0.x 外部模块：中国行政区划标准数据（国家统计局 
 - 第三方公司、联系人的创建/编辑表单自动出现 **省→市→区县** 级联选择器
 - 选中即回填 Dolibarr 标准字段：省份下拉（按名称匹配）+ 城市字段（市 区，自动跳过"市辖区"）
 
-### 结构化存储（V0.3）
+### 结构化存储（V0.3 / V0.4）
 - `llx_chinadiv_soc_division`：第三方公司的省/市/区县**编码**（fk_soc 唯一），
   由模块 Trigger 在客户创建/保存时落库，编辑页自动回填
+- `llx_chinadiv_contact_division`：联系人的省/市/区县编码（fk_socpeople 唯一），
+  同一 Trigger（CONTACT_CREATE/CONTACT_MODIFY）落库；从第三方 Tab 新建联系人时
+  级联自动预填该第三方的编码
 - 机器可读编码是物流（派送范围）、短信（归属地）等下游模块的依赖前提
+
+### 地址规范化（V0.4）
+- 库函数 `chinadiv_parse_address($text)`：自由文本地址 → 省/市/区县编码 + 详细地址
+  （标准区划名贪心前缀匹配，支持直辖市/省直辖县级；纯查询不写库）
+- 管理页"存量地址规范化"：扫描已填地址但缺编码的第三方，预览解析结果后一键应用
+  （只写模块编码表，可删除行回退；需 `chinadiv admin` 权限）
 
 ### 库与 API
 - 工具函数：`chinadiv_get_divisions($parent)`、`chinadiv_find_by_name($name)`、
@@ -29,6 +38,7 @@ Dolibarr 22.0.x 外部模块：中国行政区划标准数据（国家统计局 
 - REST API：
   - `GET /api/index.php/chinadiv/divisions?parent=440000`（子区划）或 `?q=广州`（名称搜索）
   - `GET /api/index.php/chinadiv/divisions/soc/{socid}`（第三方的区划编码，需 `societe lire` + `chinadiv read`）
+  - `GET /api/index.php/chinadiv/divisions/contact/{id}`（联系人的区划编码，需 `societe contact lire` + `chinadiv read`）
 - 权限：`chinadiv read` / `chinadiv admin`（导入）
 
 ## 安装
@@ -58,5 +68,5 @@ php tests/run_all.php        # 结构测试（无 PHPUnit 环境可跑）
 
 ## 后续方向
 
-街道/乡镇第四级（按需加，需评估安装体积）、地址规范化工具（存量自由文本地址结构化）、
-联系人级联的编码存储（当前联系人只做文本回填，不做编码落库）。
+街道/乡镇第四级（按需加，需评估安装体积）、联系人地址的批量规范化、
+解析不出区县时的简称/别名容错。

@@ -97,4 +97,27 @@ class Chinadiv extends DolibarrApi
 		}
 		return $codes;
 	}
+
+	/**
+	 * Get the division codes stored for a contact (machine-readable, V0.4).
+	 *
+	 * @url	GET divisions/contact/{contactid}
+	 *
+	 * @param	int		$contactid	Contact id
+	 * @return	array<string,string>|null
+	 * @throws RestException 403 Not allowed
+	 * @throws RestException 404 Not found
+	 */
+	public function getContactDivision($contactid)
+	{
+		if (!DolibarrApiAccess::$user->hasRight('chinadiv', 'read') || !DolibarrApiAccess::$user->hasRight('societe', 'contact', 'lire')) {
+			throw new RestException(403);
+		}
+		$dao = new ChinaDivDivision($this->db);
+		$codes = $dao->getContactCodes((int) $contactid);
+		if (is_null($codes)) {
+			throw new RestException(404, 'No division codes stored for contact '.$contactid);
+		}
+		return $codes;
+	}
 }

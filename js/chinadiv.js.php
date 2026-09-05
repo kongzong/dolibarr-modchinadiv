@@ -18,7 +18,8 @@
 /**
  * \file    htdocs/custom/chinadiv/js/chinadiv.js.php
  * \ingroup chinadiv
- * \brief   Cascade province/city/district selector injected on thirdparty forms.
+ * \brief   Cascade province/city/district selector injected on thirdparty and
+ *          contact forms.
  *
  * Loaded on every page (module_parts['js']); activates only on thirdparty
  * create/edit forms (identified by the town + state_id fields in the main
@@ -47,6 +48,7 @@ header('Cache-Control: no-cache, must-revalidate');
 
 	var ajaxUrl = baseUrl() + 'custom/chinadiv/ajax/divisions.php';
 	var socUrl = baseUrl() + 'custom/chinadiv/ajax/soc_division.php';
+	var contactUrl = baseUrl() + 'custom/chinadiv/ajax/contact_division.php';
 	var hint = <?php echo json_encode('中国行政区划快捷选择：选定后自动填充省份与城市字段 / Quick select: fills province and city fields'); ?>;
 
 	// Hidden inputs carrying the machine-readable codes; saved by the module trigger
@@ -74,18 +76,33 @@ header('Cache-Control: no-cache, must-revalidate');
 		set('chinadiv_district_code', d);
 	}
 
-	function socIdFromUrl() {
-		// Stored codes exist for thirdparties only; contact cards also use id=
-		// (contact id), so prefill must be limited to thirdparty pages.
-		if (window.location.pathname.indexOf('/societe/') === -1) { return ''; }
-		var m = window.location.search.match(/[?&]socid=(\d+)/) || window.location.search.match(/[?&]id=(\d+)/);
-		return m ? m[1] : '';
+	function storedCodesRequest() {
+		// Which stored codes prefill this page, if any:
+		// - /societe/ card: the thirdparty's own codes (socid= or id=)
+		// - /contact/ card with socid=: create under a thirdparty -> prefill from its codes
+		// - /contact/ card with id=: edit -> the contact's own codes
+		var path = window.location.pathname;
+		var query = window.location.search;
+		var socId = (query.match(/[?&]socid=(\d+)/) || [])[1] || '';
+		var id = (query.match(/[?&]id=(\d+)/) || [])[1] || '';
+		if (path.indexOf('/societe/') !== -1 && (id || socId)) {
+			return { url: socUrl + '?fk_soc=' + encodeURIComponent(id || socId) };
+		}
+		if (path.indexOf('/contact/') !== -1) {
+			if (socId) {
+				return { url: socUrl + '?fk_soc=' + encodeURIComponent(socId) };
+			}
+			if (id) {
+				return { url: contactUrl + '?fk_socpeople=' + encodeURIComponent(id) };
+			}
+		}
+		return null;
 	}
 
 	function prefillStored(form) {
-		var socId = socIdFromUrl();
-		if (!socId) { return; }
-		fetch(socUrl + '?fk_soc=' + encodeURIComponent(socId), {credentials: 'same-origin'})
+		var req = storedCodesRequest();
+		if (!req) { return; }
+		fetch(req.url, {credentials: 'same-origin'})
 			.then(function (r) { return r.ok ? r.json() : null; })
 			.then(function (codes) {
 				if (!codes || !codes.province_code) { return; }

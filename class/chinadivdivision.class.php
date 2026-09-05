@@ -249,6 +249,172 @@ class ChinaDivDivision
 	}
 
 	/**
+	 * Save the division codes of a contact (upsert, one row per contact).
+	 * Mirror of upsertSocCodes for socpeople (V0.4).
+	 *
+	 * @param	int		$fkContact		Contact id
+	 * @param	string	$provinceCode	6-digit code or '' to clear
+	 * @param	string	$cityCode		6-digit code or ''
+	 * @param	string	$districtCode	6-digit code or ''
+	 * @return	int						1 ok, <0 error
+	 */
+	public function upsertContactCodes($fkContact, $provinceCode, $cityCode, $districtCode)
+	{
+		if ((int) $fkContact <= 0) {
+			return -1;
+		}
+		$valid = function ($c) { return preg_match('/^[0-9]{6}$/', (string) $c) ? $c : ''; };
+		$p = $valid($provinceCode);
+		$c = $valid($cityCode);
+		$d = $valid($districtCode);
+		if ($p === '' && $c === '' && $d === '') {
+			$sql = "DELETE FROM ".$this->db->prefix()."chinadiv_contact_division WHERE fk_socpeople = ".((int) $fkContact);
+			return $this->db->query($sql) ? 1 : -1;
+		}
+		$sql = "INSERT INTO ".$this->db->prefix()."chinadiv_contact_division (fk_socpeople, province_code, city_code, district_code)";
+		$sql .= " VALUES (".((int) $fkContact).", ".($p !== '' ? "'".$p."'" : 'NULL').", ".($c !== '' ? "'".$c."'" : 'NULL').", ".($d !== '' ? "'".$d."'" : 'NULL').")";
+		$sql .= " ON DUPLICATE KEY UPDATE province_code = VALUES(province_code), city_code = VALUES(city_code), district_code = VALUES(district_code)";
+		$resql = $this->db->query($sql);
+		return $resql ? 1 : -1;
+	}
+
+	/**
+	 * Get the division codes stored for a contact.
+	 *
+	 * @param	int		$fkContact	Contact id
+	 * @return	array{province_code:string,city_code:string,district_code:string}|null	null when no row
+	 */
+	public function getContactCodes($fkContact)
+	{
+		$sql = "SELECT province_code, city_code, district_code FROM ".$this->db->prefix()."chinadiv_contact_division";
+		$sql .= " WHERE fk_socpeople = ".((int) $fkContact);
+		$resql = $this->db->query($sql);
+		if (!$resql) {
+			return null;
+		}
+		$obj = $this->db->fetch_object($resql);
+		if (!$obj) {
+			return null;
+		}
+		return array(
+			'province_code' => (string) $obj->province_code,
+			'city_code' => (string) $obj->city_code,
+			'district_code' => (string) $obj->district_code,
+		);
+	}
+
+	/**
+	 * All level-3 districts under a province, whatever their city
+	 * (covers municipalities and 省直辖县级行政区划 where the text has no city name).
+	 *
+	 * @param	string	$provinceCode	6-digit province code
+	 * @return	array<int,array{code:string,name:string,parent_code:string}>
+	 */
+	public function getAllDistrictsOfProvince($provinceCode)
+	{
+		$result = array();
+		if (!preg_match('/^[0-9]{6}$/', (string) $provinceCode)) {
+			return $result;
+		}
+		$sql = "SELECT d.code, d.name, d.parent_code FROM ".$this->db->prefix()."chinadiv_division d";
+		$sql .= " INNER JOIN ".$this->db->prefix()."chinadiv_division c ON d.parent_code = c.code";
+		$sql .= " WHERE c.parent_code = '".$this->db->escape($provinceCode)."' AND d.level = ".self::LEVEL_DISTRICT." AND d.active = 1";
+		$sql .= " ORDER BY d.code ASC";
+		$resql = $this->db->query($sql);
+		if (!$resql) {
+			return $result;
+		}
+		while ($obj = $this->db->fetch_object($resql)) {
+			$result[] = array('code' => $obj->code, 'name' => $obj->name, 'parent_code' => $obj->parent_code);
+		}
+		return $result;
+	}
+
+	/**
+	 * Parse a free-text Chinese address into division codes + remainder (pure lookup, no write).
+	 * Greedy longest-prefix match on standard division names (省 → 市 → 区县).
+	 * Handles municipalities (市辖区) and province-administered entities by falling
+	 * back to a province-wide district match when no city name appears in the text.
+	 *
+	 * @param	string	$text	Address text
+	 * @return	array{province_code:string,city_code:string,district_code:string,detail:string}|null	null when no province matched
+	 */
+	public function parseAddress($text)
+	{
+		$text = trim((string) $text);
+		if (mb_strlen($text) < 4) {
+			return null;
+		}
+		// Longest province name that prefixes the text
+		$province = null;
+		foreach ($this->getChildren('') as $prov) {
+			if (strpos($text, $prov['name']) === 0) {
+				if ($province === null || mb_strlen($prov['name']) > mb_strlen($province['name'])) {
+					$province = $prov;
+				}
+			}
+		}
+		if ($province === null) {
+			return null;
+		}
+		$rest = mb_substr($text, mb_strlen($province['name']));
+
+		$matchPrefix = function ($rest, array $items) {
+			$best = null;
+			foreach ($items as $item) {
+				if (strpos($rest, $item['name']) === 0) {
+					if ($best === null || mb_strlen($item['name']) > mb_strlen($best['name'])) {
+						$best = $item;
+					}
+				}
+			}
+			return $best;
+		};
+
+		$city = $matchPrefix($rest, $this->getChildren($province['code']));
+		if ($city !== null && $city['name'] !== '市辖区' && $city['name'] !== '县') {
+			$rest = mb_substr($rest, mb_strlen($city['name']));
+			$district = $matchPrefix($rest, $this->getChildren($city['code']));
+		} else {
+			// No usable city name in the text: search districts province-wide
+			$city = null;
+			$district = $matchPrefix($rest, $this->getAllDistrictsOfProvince($province['code']));
+		}
+		if ($district !== null) {
+			$rest = mb_substr($rest, mb_strlen($district['name']));
+		}
+		return array(
+			'province_code' => $province['code'],
+			'city_code' => $city !== null ? $city['code'] : '',
+			'district_code' => $district !== null ? $district['code'] : '',
+			'detail' => trim((string) $rest),
+		);
+	}
+
+	/**
+	 * Thirdparties with a filled address but no stored division codes (normalization backlog).
+	 *
+	 * @param	int	$limit	Max rows returned
+	 * @return	array<int,array{id:int,name:string,address:string}>
+	 */
+	public function getSocsMissingCodes($limit = 500)
+	{
+		$result = array();
+		$sql = "SELECT s.rowid, s.nom, s.address FROM ".$this->db->prefix()."societe AS s";
+		$sql .= " LEFT JOIN ".$this->db->prefix()."chinadiv_soc_division AS cd ON cd.fk_soc = s.rowid";
+		$sql .= " WHERE s.entity IN (".getEntity('societe').") AND s.address <> '' AND cd.fk_soc IS NULL";
+		$sql .= " ORDER BY s.rowid ASC LIMIT ".max(1, min(2000, (int) $limit));
+		$resql = $this->db->query($sql);
+		if (!$resql) {
+			return $result;
+		}
+		while ($obj = $this->db->fetch_object($resql)) {
+			$result[] = array('id' => (int) $obj->rowid, 'name' => $obj->nom, 'address' => $obj->address);
+		}
+		return $result;
+	}
+
+	/**
 	 * Import the standard pca-code.json dataset (modood/Administrative-divisions-of-China).
 	 *
 	 * @param	string	$json	Raw JSON content

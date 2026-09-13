@@ -46,7 +46,8 @@ Dolibarr 22.0.x 外部模块：中国行政区划标准数据（国家统计局 
 ```
 git clone <repo> htdocs/custom/chinadiv
 ```
-Dolibarr → 设置 → 模块/应用 → 搜索 "ChinaDiv" → 启用（自动建两张表并载入全量数据）。
+Dolibarr → 设置 → 模块/应用 → 搜索 "ChinaDiv" → 启用（自动建三张表并载入全量数据）：
+`llx_chinadiv_division`、`llx_chinadiv_soc_division`、`llx_chinadiv_contact_division`。
 
 ## 数据源与许可
 
